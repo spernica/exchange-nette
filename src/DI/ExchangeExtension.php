@@ -45,7 +45,8 @@ final class ExchangeExtension extends NDI\CompilerExtension
 
 		// number format factory
 		$nff = $builder->addDefinition($this->prefix('numberFormatFactory'))
-			->setClass(Number\NumberFormatFactory::class);
+			->setClass(Number\NumberFormatFactory::class)
+			->setAutowired(FALSE);
 
 		// formats
 		$formats = $builder->addDefinition($this->prefix('formats'))
@@ -93,6 +94,15 @@ final class ExchangeExtension extends NDI\CompilerExtension
 	public function beforeCompile()
 	{
 		$builder = $this->getContainerBuilder();
+
+		$definitions = $builder->findByType(Number\NumberFormatFactory::class);
+		unset($definitions[$this->prefix('numberFormatFactory')]);
+		if ($definitions) {
+			$definition = key($definitions);
+			$builder->getDefinition($this->prefix('numberFormatFactory'))
+				->setFactory('@' . $definition);
+		}
+
 		if ($builder->hasDefinition('application.application')) {
 			$application = $builder->getDefinition('application.application');
 			$application->addSetup(new NDI\Statement('$service->onPresenter[] = function() {?->init();}', [$this->prefix('@exchangeManager')]));

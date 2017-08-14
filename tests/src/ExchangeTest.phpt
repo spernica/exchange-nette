@@ -14,7 +14,8 @@ $compiler->addConfig([
 		'tempDir' => TEMP_DIR
 	],
 	'services' => [
-		'router' => \Nette\Application\Routers\SimpleRouter::class
+		'router' => \Nette\Application\Routers\SimpleRouter::class,
+		'numberFormatFactory' => Number\NumberFormatFactory::class
 	]
 ]);
 
@@ -36,6 +37,7 @@ $container = new \Container();
 Assert::type(ExchangeManager::class, $container->getService('exchange.exchangeManager'));
 
 Assert::type(Number\NumberFormatFactory::class, $container->getService('exchange.numberFormatFactory'));
+Assert::same($container->getService('numberFormatFactory'), $container->getService('exchange.numberFormatFactory'));
 
 Assert::type(Currency\Formats::class, $container->getService('exchange.formats'));
 
