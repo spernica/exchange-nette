@@ -105,7 +105,7 @@ final class ExchangeExtension extends NDI\CompilerExtension
 
 		if ($builder->hasDefinition('application.application')) {
 			$application = $builder->getDefinition('application.application');
-			$application->addSetup(new NDI\Statement('$service->onPresenter[] = function() {?->init();}', [$this->prefix('@exchangeManager')]));
+			$application->addSetup(new NDI\Statement('$service->onPresenter[] = function($application, $presenter) {?->init($presenter);}', [$this->prefix('@exchangeManager')]));
 		}
 
 		if ($builder->hasDefinition('latte.latteFactory')) {

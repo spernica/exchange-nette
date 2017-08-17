@@ -31,6 +31,8 @@ $compiler->addExtension('application', new \Nette\Bridges\ApplicationDI\Applicat
 $compiler->addExtension('http', new \Nette\Bridges\HttpDI\HttpExtension);
 $compiler->addExtension('session', new \Nette\Bridges\HttpDI\SessionExtension());
 
+// file_put_contents(__DIR__ . '/container.php', "<?php\n" . $compiler->compile());
+
 eval($compiler->compile());
 $container = new \Container();
 

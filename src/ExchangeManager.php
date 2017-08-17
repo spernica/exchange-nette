@@ -2,10 +2,16 @@
 
 namespace h4kuna\Exchange;
 
-use Nette\Http;
+use Nette,
+	Nette\Http;
 
 class ExchangeManager
 {
+	use Nette\SmartObject;
+
+	/** @var callable[] */
+	public $onChangeCurrency;
+
 	/** @var Exchange */
 	private $exchange;
 
@@ -43,7 +49,7 @@ class ExchangeManager
 		$this->parameter = $parameter;
 	}
 
-	public function init()
+	public function init(Nette\Application\IPresenter $presenter)
 	{
 		$value = $this->setCurrency($this->getQuery());
 		if ($value === NULL) {
@@ -51,6 +57,8 @@ class ExchangeManager
 			if ($value === NULL) {
 				$this->initSession();
 			}
+		} else {
+			$this->onChangeCurrency($presenter, $value, $this->exchange);
 		}
 	}
 
@@ -107,13 +115,13 @@ class ExchangeManager
 
 	protected function saveCookie($code)
 	{
-		$this->response->setCookie($this->parameter, $code, '+14 days');
+		$this->response->setCookie($this->parameter, $code, '+6 month');
 	}
 
 	protected function saveSession($code)
 	{
 		$this->session->{$this->parameter} = $code;
-		$this->session->setExpiration('+14 days', $this->parameter);
+		$this->session->setExpiration('+7 days');
 	}
 
 	protected function deleteCookie()
