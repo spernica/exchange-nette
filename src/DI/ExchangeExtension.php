@@ -10,16 +10,16 @@ final class ExchangeExtension extends NDI\CompilerExtension
 {
 
 	private $defaults = [
-		'vat' => NULL, // 21
-		'strict' => TRUE, // download only defined currencies
+		'vat' => null, // 21
+		'strict' => true, // download only defined currencies
 		'defaultFormat' => [], // default number format
 		'currencies' => [
 			'czk' => ['unit' => 'Kč'],
 			'eur' => ['unit' => '€', 'mask' => 'U 1'],
 			'usd' => ['unit' => '$', 'mask' => 'U1']
 		],
-		'tempDir' => '%tempDir%/currencies', // cache
-		'session' => FALSE, // TRUE or FALSE
+		'tempDir' => '', // cache
+		'session' => false, // true or false
 		'managerParameter' => 'currency', // parameter for query, cookie and session
 		'filters' => [
 			'currency' => 'currency',
@@ -27,17 +27,23 @@ final class ExchangeExtension extends NDI\CompilerExtension
 		]
 	];
 
+
+	public function __construct($tempDir = null)
+	{
+		$this->defaults['tempDir'] = $tempDir . DIRECTORY_SEPARATOR . 'currencies';
+	}
+
+
 	public function loadConfiguration()
 	{
-		$this->config += $this->defaults;
+		$config = $this->config + $this->defaults;
 		$builder = $this->getContainerBuilder();
-		$config = NDI\Helpers::expand($this->config, $builder->parameters);
 
 		// ExchangeManager
 		$exchangeManager = $builder->addDefinition($this->prefix('exchangeManager'))
 			->setClass(Exchange\ExchangeManager::class)
 			->addSetup('setParameter', [$config['managerParameter']])
-			->setAutowired(FALSE);
+			->setAutowired(false);
 
 		if ($config['session']) {
 			$exchangeManager->addSetup('setSession', [new NDI\Statement('?->getSection(\'h4kuna.exchange\')', ['@session.session'])]);
@@ -46,12 +52,12 @@ final class ExchangeExtension extends NDI\CompilerExtension
 		// number format factory
 		$nff = $builder->addDefinition($this->prefix('numberFormatFactory'))
 			->setClass(Number\NumberFormatFactory::class)
-			->setAutowired(FALSE);
+			->setAutowired(false);
 
 		// formats
 		$formats = $builder->addDefinition($this->prefix('formats'))
 			->setClass(Exchange\Currency\Formats::class, [$nff])
-			->setAutowired(FALSE);
+			->setAutowired(false);
 
 		if ($config['defaultFormat']) {
 			$formats->addSetup('setDefaultFormat', [$config['defaultFormat']]);
@@ -69,7 +75,7 @@ final class ExchangeExtension extends NDI\CompilerExtension
 		// cache
 		$cache = $builder->addDefinition($this->prefix('cache'))
 			->setClass(Exchange\Caching\Cache::class, [$config['tempDir']])
-			->setAutowired(FALSE);
+			->setAutowired(false);
 
 		if ($config['strict']) {
 			$cache->addSetup('setAllowedCurrencies', [$allowedCurrencies]);
@@ -82,7 +88,7 @@ final class ExchangeExtension extends NDI\CompilerExtension
 		// filters
 		$filters = $builder->addDefinition($this->prefix('filters'))
 			->setClass(Exchange\Filters::class, [$exchange, $formats])
-			->setAutowired(FALSE);
+			->setAutowired(false);
 
 		if ($config['vat']) {
 			$vat = $builder->addDefinition($this->prefix('vat'))
@@ -90,6 +96,7 @@ final class ExchangeExtension extends NDI\CompilerExtension
 			$filters->addSetup('setVat', [$vat]);
 		}
 	}
+
 
 	public function beforeCompile()
 	{
@@ -117,7 +124,6 @@ final class ExchangeExtension extends NDI\CompilerExtension
 					[$this->prefix('@filters'), 'formatVat']
 				]);
 			}
-
 		}
 	}
 
