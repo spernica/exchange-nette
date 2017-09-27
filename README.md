@@ -13,9 +13,13 @@ $ composer require h4kuna/exchange-nette
 ```
 
 ## Registration
+First step is registration extension and set tempDir.
 ```neon
 extensions:
     exchangeExtension: h4kuna\Exchange\DI\ExchangeExtension
+
+exchangeExtension:
+    tempDir: %tempDir%/currencies   
 ```
 Extension is ready to use other configuration are optionally. Default is defined three currencies CZK, EUR and USD. Currencies has default format by [h4kuna/number-format](//github.com/h4kuna/number-format), where is documentation.
 
@@ -46,8 +50,7 @@ exchangeExtension:
     session: [FALSE] # save info about currencies to session, default is only to cookie
     vat: [NULL] # add number like percent, example: 21
     strict: [FALSE] # default enabled, download only defined currencies, example: ['CZK', 'EUR']
-    defaultFormat: [NULL] # how format currency if format is not defined, value is array like above "currencies.czk"
-    tempDir: [%tempDir%] # path for cache 
+    defaultFormat: [NULL] # how format currency if format is not defined, value is array like above "currencies.czk" 
     managerParameter: [currency] # is parameter for query, cookie and session if is available
     filters: # extension define two filter for latte, you can rename
         currency: currency

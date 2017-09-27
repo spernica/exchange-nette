@@ -8,5 +8,5 @@ define('TEMP_DIR', __DIR__ . '/temp/' . getmypid());
 
 Tester\Environment::setup();
 
-Tracy\Debugger::enable(FALSE, TEMP_DIR);
+Tracy\Debugger::enable(false, TEMP_DIR);
 

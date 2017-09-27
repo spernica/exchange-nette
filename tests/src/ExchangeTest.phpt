@@ -10,24 +10,21 @@ require_once __DIR__ . '/../bootstrap.php';
 
 $compiler = new DI\Compiler();
 $compiler->addConfig([
-	'parameters' => [
-		'tempDir' => TEMP_DIR
-	],
 	'services' => [
 		'router' => \Nette\Application\Routers\SimpleRouter::class,
 		'numberFormatFactory' => Number\NumberFormatFactory::class
 	]
 ]);
 
-$extension = new \h4kuna\Exchange\DI\ExchangeExtension();
+$extension = new \h4kuna\Exchange\DI\ExchangeExtension(TEMP_DIR);
 $extension->setConfig([
 	'vat' => 21,
 	'defaultFormat' => ['decimals' => 3],
-	'session' => TRUE
+	'session' => true
 ]);
 $compiler->addExtension('exchange', $extension);
 $compiler->addExtension('latte', new \Nette\Bridges\ApplicationDI\LatteExtension(TEMP_DIR));
-$compiler->addExtension('application', new \Nette\Bridges\ApplicationDI\ApplicationExtension(FALSE, NULL, TEMP_DIR));
+$compiler->addExtension('application', new \Nette\Bridges\ApplicationDI\ApplicationExtension(false, null, TEMP_DIR));
 $compiler->addExtension('http', new \Nette\Bridges\HttpDI\HttpExtension);
 $compiler->addExtension('session', new \Nette\Bridges\HttpDI\SessionExtension());
 
