@@ -2,9 +2,9 @@
 
 namespace h4kuna\Exchange;
 
-use h4kuna\Number,
-	Tester\Assert,
-	Nette\DI;
+use h4kuna\Number;
+use Tester\Assert;
+use Nette\DI;
 
 require_once __DIR__ . '/../bootstrap.php';
 

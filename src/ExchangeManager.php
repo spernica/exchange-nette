@@ -1,14 +1,15 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace h4kuna\Exchange;
 
-use Nette,
-	Nette\Http;
+use Nette;
+use Nette\Http;
 
 class ExchangeManager
 {
-
 	use Nette\SmartObject;
+
+	private const EMPTY_CODE = '';
 
 	/** @var callable[] */
 	public $onChangeCurrency;
@@ -36,109 +37,103 @@ class ExchangeManager
 	}
 
 
-	/**
-	 * @param Http\SessionSection $session
-	 */
-	public function setSession(Http\SessionSection $session)
+	public function setSession(Http\SessionSection $session): void
 	{
 		$this->session = $session;
 	}
 
 
-	/**
-	 * @param string $parameter
-	 */
-	public function setParameter($parameter)
+	public function setParameter(string $parameter): void
 	{
 		$this->parameter = $parameter;
 	}
 
 
-	public function init(Nette\Application\IPresenter $presenter)
+	public function init(Nette\Application\IPresenter $presenter): void
 	{
-		$value = $this->setCurrency($this->getQuery());
-		if ($value === null) {
-			$value = $this->initCookie();
-			if ($value === null) {
+		$code = $this->setCurrency($this->getQuery());
+		if ($code === self::EMPTY_CODE) {
+			if ($this->initCookie() === self::EMPTY_CODE) {
 				$this->initSession();
 			}
 		} else {
-			$this->onChangeCurrency($presenter, $value, $this->exchange);
+			$this->onChangeCurrency($presenter, $code, $this->exchange);
 		}
 	}
 
 
-	public function setCurrency($code)
+	public function setCurrency(string $code): string
 	{
-		if ($code === null) {
-			return null;
+		if ($code === self::EMPTY_CODE) {
+			return self::EMPTY_CODE;
 		}
 		try {
-			$value = $this->exchange->setOutput($code)->code;
+			$newCode = $this->exchange->setOutput($code)->code;
 		} catch (UnknownCurrencyException $e) {
-			return null;
+			return self::EMPTY_CODE;
 		}
 
-		$this->saveCookie($value);
-		if ($this->session !== null) {
-			$this->saveSession($value);
-		}
+		$this->saveCookie($newCode);
+		$this->saveSession($newCode);
 
-		return $value;
+		return $newCode;
 	}
 
 
-	private function initCookie()
+	private function initCookie(): string
 	{
-		$value = $this->setCurrency($this->getCookie());
-		if ($value === null) {
+		$code = $this->setCurrency($this->getCookie());
+		if ($code === self::EMPTY_CODE) {
 			$this->deleteCookie();
 		}
-		return $value;
+		return $code;
 	}
 
 
-	private function initSession()
+	private function initSession(): void
 	{
 		if ($this->session === null) {
-			return null;
+			return;
 		}
-		return $this->setCurrency($this->getSession());
+		$this->setCurrency($this->getSession());
 	}
 
 
-	protected function getSession()
+	protected function getSession(): string
 	{
-		return $this->session->{$this->parameter};
+		return (string) $this->session->{$this->parameter};
 	}
 
 
-	protected function getQuery()
+	protected function getQuery(): string
 	{
 		return $this->request->getQuery($this->parameter);
 	}
 
 
-	protected function getCookie()
+	protected function getCookie(): string
 	{
-		return $this->request->getCookie($this->parameter);
+		return $this->request->getCookie($this->parameter, '');
 	}
 
 
-	protected function saveCookie($code)
+	protected function saveCookie(string $code): void
 	{
 		$this->response->setCookie($this->parameter, $code, '+6 month');
 	}
 
 
-	protected function saveSession($code)
+	protected function saveSession(string $code): void
 	{
+		if ($this->session === null) {
+			return;
+		}
 		$this->session->{$this->parameter} = $code;
-		$this->session->setExpiration('+7 days');
+		$this->session->setExpiration('+1 days');
 	}
 
 
-	protected function deleteCookie()
+	protected function deleteCookie(): void
 	{
 		$this->response->deleteCookie($this->parameter);
 	}

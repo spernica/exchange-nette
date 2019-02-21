@@ -1,16 +1,16 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace h4kuna\Exchange\DI;
 
-use h4kuna\Exchange,
-	h4kuna\Number,
-	Nette\DI as NDI;
+use h4kuna\Exchange;
+use h4kuna\Number;
+use Nette\DI as NDI;
 
 final class ExchangeExtension extends NDI\CompilerExtension
 {
 
 	private $defaults = [
-		'vat' => null, // 21
+		'vat' => 0, // 21
 		'strict' => true, // download only defined currencies
 		'defaultFormat' => [], // default number format
 		'currencies' => [
@@ -28,7 +28,7 @@ final class ExchangeExtension extends NDI\CompilerExtension
 	];
 
 
-	public function __construct($tempDir = null)
+	public function __construct(string $tempDir)
 	{
 		$this->defaults['tempDir'] = $tempDir . DIRECTORY_SEPARATOR . 'currencies';
 	}
@@ -36,65 +36,21 @@ final class ExchangeExtension extends NDI\CompilerExtension
 
 	public function loadConfiguration()
 	{
-		$config = $this->config + $this->defaults;
+		$config = $this->validateConfig($this->defaults);
 		$builder = $this->getContainerBuilder();
 
-		// ExchangeManager
-		$exchangeManager = $builder->addDefinition($this->prefix('exchangeManager'))
-			->setClass(Exchange\ExchangeManager::class)
-			->addSetup('setParameter', [$config['managerParameter']])
-			->setAutowired(false);
+		$this->buildExchangeManager($builder, $config['managerParameter'], $config['session']);
+		$nff = $this->buildNumberFormatFactory($builder);
 
-		if ($config['session']) {
-			$exchangeManager->addSetup('setSession', [new NDI\Statement('?->getSection(\'h4kuna.exchange\')', ['@session.session'])]);
-		}
+		[$currencies, $formats] = $this->buildFormats($builder, $nff, $config['defaultFormat'], $config['currencies']);
 
-		// number format factory
-		$nff = $builder->addDefinition($this->prefix('numberFormatFactory'))
-			->setClass(Number\NumberFormatFactory::class)
-			->setAutowired(false);
+		$cache = $this->buildCache($builder, $config['strict'] ? $currencies : [], $config['tempDir']);
 
-		// formats
-		$formats = $builder->addDefinition($this->prefix('formats'))
-			->setClass(Exchange\Currency\Formats::class, [$nff])
-			->setAutowired(false);
+		$exchange = $this->buildExchange($builder, $cache);
 
-		if ($config['defaultFormat']) {
-			$formats->addSetup('setDefaultFormat', [$config['defaultFormat']]);
-		}
+		$filters = $this->buildFilters($builder, $exchange, $formats);
 
-		$allowedCurrencies = [];
-		foreach ($config['currencies'] as $code => $setup) {
-			$code = strtoupper($code);
-			$allowedCurrencies[] = $code;
-			if ($setup) {
-				$formats->addSetup('addFormat', [$code, $setup]);
-			}
-		}
-
-		// cache
-		$cache = $builder->addDefinition($this->prefix('cache'))
-			->setClass(Exchange\Caching\Cache::class, [$config['tempDir']])
-			->setAutowired(false);
-
-		if ($config['strict']) {
-			$cache->addSetup('setAllowedCurrencies', [$allowedCurrencies]);
-		}
-
-		// exchange
-		$exchange = $builder->addDefinition($this->prefix('exchange'))
-			->setClass(Exchange\Exchange::class, [$cache]);
-
-		// filters
-		$filters = $builder->addDefinition($this->prefix('filters'))
-			->setClass(Exchange\Filters::class, [$exchange, $formats])
-			->setAutowired(false);
-
-		if ($config['vat']) {
-			$vat = $builder->addDefinition($this->prefix('vat'))
-				->setClass(Number\Tax::class, [$config['vat']]);
-			$filters->addSetup('setVat', [$vat]);
-		}
+		$this->buildVat($builder, $filters, (float) $config['vat']);
 	}
 
 
@@ -104,7 +60,7 @@ final class ExchangeExtension extends NDI\CompilerExtension
 
 		$definitions = $builder->findByType(Number\NumberFormatFactory::class);
 		unset($definitions[$this->prefix('numberFormatFactory')]);
-		if ($definitions) {
+		if ($definitions !== []) {
 			$definition = key($definitions);
 			$builder->getDefinition($this->prefix('numberFormatFactory'))
 				->setFactory('@' . $definition);
@@ -125,6 +81,88 @@ final class ExchangeExtension extends NDI\CompilerExtension
 				]);
 			}
 		}
+	}
+
+
+	private function buildExchangeManager(NDI\ContainerBuilder $builder, string $parameter, bool $session): void
+	{
+		$exchangeManager = $builder->addDefinition($this->prefix('exchangeManager'))
+			->setFactory(Exchange\ExchangeManager::class)
+			->addSetup('setParameter', [$parameter])
+			->setAutowired(false);
+
+		if ($session) {
+			$exchangeManager->addSetup('setSession', [new NDI\Statement('?->getSection(\'h4kuna.exchange\')', ['@session.session'])]);
+		}
+	}
+
+
+	private function buildNumberFormatFactory(NDI\ContainerBuilder $builder): NDI\ServiceDefinition
+	{
+		return $builder->addDefinition($this->prefix('numberFormatFactory'))
+			->setFactory(Number\NumberFormatFactory::class)
+			->setAutowired(false);
+	}
+
+
+	private function buildFormats(NDI\ContainerBuilder $builder, NDI\ServiceDefinition $numberFormatFactory, array $defaultFormat, array $currencies): array
+	{
+		$formats = $builder->addDefinition($this->prefix('formats'))
+			->setFactory(Exchange\Currency\Formats::class, [$numberFormatFactory])
+			->setAutowired(false);
+
+		if ($defaultFormat !== []) {
+			$formats->addSetup('setDefaultFormat', [$defaultFormat]);
+		}
+
+		$allowedCurrencies = [];
+		foreach ($currencies as $code => $setup) {
+			$code = strtoupper($code);
+			$allowedCurrencies[] = $code;
+			if ($setup) {
+				$formats->addSetup('addFormat', [$code, $setup]);
+			}
+		}
+		return [$allowedCurrencies, $formats];
+	}
+
+
+	private function buildCache(NDI\ContainerBuilder $builder, array $allowedCurrencies, string $tempDir): NDI\ServiceDefinition
+	{
+		$cache = $builder->addDefinition($this->prefix('cache'))
+			->setFactory(Exchange\Caching\Cache::class, [$tempDir])
+			->setAutowired(false);
+
+		if ($allowedCurrencies) {
+			$cache->addSetup('setAllowedCurrencies', [$allowedCurrencies]);
+		}
+		return $cache;
+	}
+
+
+	private function buildExchange(NDI\ContainerBuilder $builder, NDI\ServiceDefinition $cache): NDI\ServiceDefinition
+	{
+		return $builder->addDefinition($this->prefix('exchange'))
+			->setFactory(Exchange\Exchange::class, [$cache]);
+	}
+
+
+	private function buildFilters(NDI\ContainerBuilder $builder, NDI\ServiceDefinition $exchange, NDI\ServiceDefinition $formats): NDI\ServiceDefinition
+	{
+		return $builder->addDefinition($this->prefix('filters'))
+			->setFactory(Exchange\Filters::class, [$exchange, $formats])
+			->setAutowired(false);
+	}
+
+
+	private function buildVat(NDI\ContainerBuilder $builder, NDI\ServiceDefinition $filters, float $vat): void
+	{
+		if ($vat === 0.0) {
+			return;
+		}
+		$vatDefinition = $builder->addDefinition($this->prefix('vat'))
+			->setFactory(Number\Tax::class, [$vat]);
+		$filters->addSetup('setVat', [$vatDefinition]);
 	}
 
 }
