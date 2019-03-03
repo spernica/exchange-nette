@@ -37,11 +37,11 @@ exchangeExtension:
                 zeroIsEmpty: TRUE
                 emptyValue: '-'
                 zeroClear: TRUE
-                intOnly: NULL
                 mask: '1U'
                 showUnit: FALSE 
                 nbsp: TRUE
                 unit: Kč
+                intOnly: -1 # -1 is default value
                 
             usd:
                 unit: '$'
