@@ -15,9 +15,9 @@
 		"php": ">=7.1",
 		"h4kuna/exchange": "^6.0",
 		"latte/latte": "^2.5",
-		"nette/application": "^2.0 || v3.0",
-		"nette/bootstrap": "^2.0 || v3.0",
-		"nette/http": "^2.0 || v3.0"
+		"nette/application": "^2.0 || ^3.0",
+		"nette/bootstrap": "^2.0 || ^3.0",
+		"nette/http": "^2.0 || ^3.0"
 	},
 	"minimum-stability": "dev",
 	"require-dev": {
