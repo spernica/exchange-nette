@@ -2,6 +2,7 @@
 
 namespace h4kuna\Exchange;
 
+use h4kuna\Exchange\Exceptions\UnknownCurrency;
 use Nette;
 use Nette\Http;
 
@@ -69,7 +70,7 @@ class ExchangeManager
 		}
 		try {
 			$newCode = $this->exchange->setOutput($code)->code;
-		} catch (UnknownCurrencyException $e) {
+		} catch (UnknownCurrency $e) {
 			return self::EMPTY_CODE;
 		}
 
