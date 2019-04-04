@@ -2,7 +2,7 @@
 
 include __DIR__ . '/../vendor/autoload.php';
 
-define('TEMP_DIR', __DIR__ . '/temp/' . getmypid());
+define('TEMP_DIR', __DIR__ . '/temp');
 
 \Nette\Utils\FileSystem::createDir(TEMP_DIR);
 

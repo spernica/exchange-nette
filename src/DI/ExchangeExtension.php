@@ -5,52 +5,54 @@ namespace h4kuna\Exchange\DI;
 use h4kuna\Exchange;
 use h4kuna\Number;
 use Nette\DI as NDI;
+use Nette\Schema\Expect;
+use Nette\Schema\Schema;
 
 final class ExchangeExtension extends NDI\CompilerExtension
 {
 
-	private $defaults = [
-		'vat' => 0, // 21
-		'strict' => true, // download only defined currencies
-		'defaultFormat' => [], // default number format
-		'currencies' => [
-			'czk' => ['unit' => 'Kč'],
-			'eur' => ['unit' => '€', 'mask' => 'U 1'],
-			'usd' => ['unit' => '$', 'mask' => 'U1']
-		],
-		'tempDir' => '', // cache
-		'session' => false, // true or false
-		'managerParameter' => 'currency', // parameter for query, cookie and session
-		'filters' => [
-			'currency' => 'currency',
-			'vat' => 'vat'
-		]
-	];
-
-
-	public function __construct(string $tempDir)
+	public function getConfigSchema(): Schema
 	{
-		$this->defaults['tempDir'] = $tempDir . DIRECTORY_SEPARATOR . 'currencies';
+		$tempDir = $this->getContainerBuilder()->parameters['tempDir'] ?? '/tmp';
+
+		return Expect::structure([
+			'vat' => Expect::anyOf(Expect::int(0), Expect::float(0.0))->default(0),
+			'strict' => Expect::bool(true),
+			'defaultFormat' => Expect::array(),
+			'currencies' => Expect::anyOf(Expect::arrayOf('array'), false)->default([
+				'czk' => ['unit' => 'Kč'],
+				'eur' => ['unit' => '€', 'mask' => 'U 1'],
+				'usd' => ['unit' => '$', 'mask' => 'U1']
+			]),
+			'tempDir' => Expect::string()
+				->default($tempDir . DIRECTORY_SEPARATOR . 'currencies'),
+			'session' => Expect::bool(false),
+			'managerParameter' => Expect::string('currency'),
+			'filters' => Expect::anyOf(Expect::arrayOf('array'), false)->default([
+				'currency' => 'currency',
+				'vat' => 'vat',
+			])
+		]);
 	}
 
 
 	public function loadConfiguration()
 	{
-		$config = $this->validateConfig($this->defaults);
+		$config = $this->config;
 		$builder = $this->getContainerBuilder();
 
-		$this->buildExchangeManager($builder, $config['managerParameter'], $config['session']);
+		$this->buildExchangeManager($builder, $config->managerParameter, $config->session);
 		$nff = $this->buildNumberFormatFactory($builder);
 
-		[$currencies, $formats] = $this->buildFormats($builder, $nff, $config['defaultFormat'], $config['currencies']);
+		[$currencies, $formats] = $this->buildFormats($builder, $nff, $config->defaultFormat, $config->currencies);
 
-		$cache = $this->buildCache($builder, $config['strict'] ? $currencies : [], $config['tempDir']);
+		$cache = $this->buildCache($builder, $config->strict ? $currencies : [], $config->tempDir);
 
 		$exchange = $this->buildExchange($builder, $cache);
 
 		$filters = $this->buildFilters($builder, $exchange, $formats);
 
-		$this->buildVat($builder, $filters, (float) $config['vat']);
+		$this->buildVat($builder, $filters, $config->vat);
 	}
 
 
@@ -68,15 +70,15 @@ final class ExchangeExtension extends NDI\CompilerExtension
 
 		if ($builder->hasDefinition('application.application')) {
 			$application = $builder->getDefinition('application.application');
-			$application->addSetup(new NDI\Statement('$service->onPresenter[] = function($application, $presenter) {?->init($presenter);}', [$this->prefix('@exchangeManager')]));
+			$application->addSetup(new NDI\Definitions\Statement('$service->onPresenter[] = function($application, $presenter) {?->init($presenter);}', [$this->prefix('@exchangeManager')]));
 		}
 
 		if ($builder->hasDefinition('latte.latteFactory')) {
 			$latte = $builder->getDefinition('latte.latteFactory')
-				->addSetup('addFilter', [$this->config['filters']['currency'], [$this->prefix('@filters'), 'format']]);
-			if ($this->config['vat']) {
+				->getResultDefinition()->addSetup('addFilter', [$this->config->filters['currency'], [$this->prefix('@filters'), 'format']]);
+			if ($this->config->vat) {
 				$latte->addSetup('addFilter', [
-					$this->config['filters']['vat'],
+					$this->config->filters['vat'],
 					[$this->prefix('@filters'), 'formatVat']
 				]);
 			}
@@ -92,7 +94,7 @@ final class ExchangeExtension extends NDI\CompilerExtension
 			->setAutowired(false);
 
 		if ($session) {
-			$exchangeManager->addSetup('setSession', [new NDI\Statement('?->getSection(\'h4kuna.exchange\')', ['@session.session'])]);
+			$exchangeManager->addSetup('setSession', [new NDI\Definitions\Statement('?->getSection(\'h4kuna.exchange\')', ['@session.session'])]);
 		}
 	}
 

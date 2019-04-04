@@ -3,8 +3,9 @@
 namespace h4kuna\Exchange;
 
 use h4kuna\Number;
-use Tester\Assert;
 use Nette\DI;
+use Tester;
+use Tester\Assert;
 
 require_once __DIR__ . '/../bootstrap.php';
 
@@ -16,12 +17,19 @@ $compiler->addConfig([
 	]
 ]);
 
-$extension = new \h4kuna\Exchange\DI\ExchangeExtension(TEMP_DIR);
-$extension->setConfig([
-	'vat' => 21,
-	'defaultFormat' => ['decimals' => 3],
-	'session' => true
-]);
+$extension = new \h4kuna\Exchange\DI\ExchangeExtension();
+$loader = new DI\Config\Loader;
+$config = $loader->load(Tester\FileMock::create('
+parameters:
+	tempDir: ' . TEMP_DIR . '
+exchange:
+	vat: 21.5
+	defaultFormat:
+		decimals: 3
+	session: on
+', 'neon'));
+$compiler->addConfig($config);
+
 $compiler->addExtension('exchange', $extension);
 $compiler->addExtension('latte', new \Nette\Bridges\ApplicationDI\LatteExtension(TEMP_DIR));
 $compiler->addExtension('application', new \Nette\Bridges\ApplicationDI\ApplicationExtension(false, null, TEMP_DIR));
