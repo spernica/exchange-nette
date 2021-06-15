@@ -12,8 +12,8 @@
 		}
 	],
 	"require": {
-		"php": ">=7.1",
-		"h4kuna/exchange": "^6.0",
+		"php": ">=7.1 || 8.*",
+		"h4kuna/exchange": "@dev",
 		"latte/latte": "^2.5",
 		"nette/application": "^3.0",
 		"nette/bootstrap": "^3.0",
@@ -27,5 +27,7 @@
 		"psr-4": {
 			"h4kuna\\Exchange\\": "src\\"
 		}
-	}
+	},
+	"minimum-stability": "dev",
+	"prefer-stable": true
 }
