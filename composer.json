@@ -11,9 +11,15 @@
 			"role": "Developer"
 		}
 	],
+	"repositories": [
+		{
+			"type": "vcs",
+			"url": "git@github.com:spernica/exchange.git"
+		}
+	],
 	"require": {
 		"php": ">=7.1 || 8.*",
-		"h4kuna/exchange": "@dev",
+		"h4kuna/exchange": "dev-master",
 		"latte/latte": "^2.5",
 		"nette/application": "^3.0",
 		"nette/bootstrap": "^3.0",
